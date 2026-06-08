@@ -26,23 +26,33 @@ Run **top-to-bottom** in the Setup section:
 
 | Order | Cell | Action |
 |-------|------|--------|
-| 1 | `%sh` | Install dependencies (once per cluster) |
-| 2 | Python | `from databricks_model import MODEL, MODEL_FAST` |
-| 3 | Python | Env check (LangSmith optional) |
+| 1 | `%pip` | Install dependencies into the **notebook kernel** (once per cluster) |
+| 2 | Python | `dbutils.library.restartPython()` |
+| 3 | Python | `from databricks_model import MODEL, MODEL_FAST` |
+| 4 | Python | Env check (LangSmith optional) |
 
-After `%sh`, use **Restart Python** on first run so upgraded packages load.
+**Important:** Use `%pip`, not `%sh pip`. Shell installs go to a different Python than the notebook kernel.
 
-### `%sh` cell (all notebooks)
+### `%pip` cell (all notebooks)
 
-```sh
-pip install --quiet --upgrade "typing_extensions>=4.13.0" \
+```python
+%pip install -q --upgrade "typing_extensions>=4.13.0" \
   langgraph langchain langchain-core langchain-openai \
   langchain-anthropic langchain-community langchain-mcp-adapters
+```
+
+### Restart Python cell (all notebooks)
+
+```python
+dbutils.library.restartPython()
 ```
 
 ### Configure model cell (all notebooks)
 
 ```python
+import sys
+sys.dont_write_bytecode = True  # Databricks Git folders reject __pycache__
+
 from databricks_model import MODEL, MODEL_FAST
 ```
 
@@ -78,9 +88,21 @@ MODEL.invoke("Say hello in one sentence.")
 
 ### `TypeError: _TypedDictMeta.__new__() got an unexpected keyword argument 'extra_items'`
 
-**Cause:** Old `typing_extensions` on Python 3.10–3.12 clusters.
+**Cause:** Packages were installed with `%sh pip` (wrong Python) or `typing_extensions` is still too old in the kernel.
 
-**Fix:** Re-run the `%sh` cell, **Restart Python**, confirm you are **not** importing `databricks-langchain` (this repo uses `databricks_model.py` + `langchain-openai` instead).
+**Fix:**
+1. Run the `%pip` cell (not `%sh`)
+2. Run `dbutils.library.restartPython()`
+3. Re-run the import cell
+
+### `wsfs/fuse ... __pycache__ is not allowed`
+
+**Cause:** Python wrote a `__pycache__` folder into the Git-backed workspace path.
+
+**Fix:**
+1. Delete any `python/__pycache__` folder in the workspace (if present)
+2. Re-run import with `sys.dont_write_bytecode = True` (already in the notebook)
+3. Pull latest repo — `databricks_model.py` sets this automatically
 
 ### `wsfs/fuse ... Cannot find child <unknown>`
 
