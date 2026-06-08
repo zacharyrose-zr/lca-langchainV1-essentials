@@ -50,13 +50,12 @@ Make a copy of example.env
 cp example.env .env
 ```
 
-Insert API keys directly into .env file, [OpenAI](https://openai.com/index/openai-api/) (required) and [LangSmith](#getting-started-with-langsmith) (optional)
+Insert API keys directly into .env file for **local** runs. On **Databricks**, notebooks use Unity AI Gateway via `databricks_model.py` (no OpenAI key needed). See [DATABRICKS_MIGRATION.md](./DATABRICKS_MIGRATION.md).
 
 ```bash
-# Add OpenAI API key
-OPENAI_API_KEY=your_openai_api_key_here
-# The course is written with OpenAI models, but you can choose others if you prefer. 
-# Be sure to add the key and modify the code to call your preferred model
+# Local runs only — uncomment and add OpenAI API key
+# OPENAI_API_KEY=your_openai_api_key_here
+# On Databricks, models route through Unity AI Gateway (Claude Sonnet/Haiku).
 #ANTHROPIC_API_KEY=your_anthropic_api_key_here_if_you_prefer
 
 # Optional API key for LangSmith tracing
