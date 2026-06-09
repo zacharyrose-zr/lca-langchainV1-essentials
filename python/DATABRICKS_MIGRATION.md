@@ -86,6 +86,18 @@ MODEL.invoke("Say hello in one sentence.")
 
 ## Troubleshooting
 
+### `openai.NotFoundError: 404` and gateway shows a regional URL (e.g. `nvirginia.cloud.databricks.com`)
+
+**Cause:** `ctx.apiUrl()` can return a regional shard URL, not your workspace host (`dbc-....cloud.databricks.com`). AI Gateway must be called on the workspace-specific URL.
+
+**Fix:** Pull latest `databricks_model.py` (it uses `spark.databricks.workspaceUrl` first). Re-run the import cell. You should see:
+
+```
+gateway: https://dbc-....cloud.databricks.com/ai-gateway/mlflow/v1
+```
+
+**Override (if needed):** set cluster env var `DATABRICKS_HOST=https://dbc-....cloud.databricks.com` before importing.
+
 ### `TypeError: _TypedDictMeta.__new__() got an unexpected keyword argument 'extra_items'`
 
 **Cause:** Packages were installed with `%sh pip` (wrong Python) or `typing_extensions` is still too old in the kernel.

@@ -68,8 +68,55 @@ def _get_dbutils():
     )
 
 
-ctx = _get_dbutils().notebook.entry_point.getDbutils().notebook().getContext()
-workspace_url = ctx.apiUrl().get().rstrip("/")
+def _normalize_workspace_url(url: str) -> str:
+    """Return https://<workspace-host> with no trailing slash."""
+    url = url.strip().rstrip("/")
+    if url.startswith("https://"):
+        return url
+    if url.startswith("http://"):
+        return "https://" + url.removeprefix("http://")
+    return f"https://{url}"
+
+
+def _get_workspace_url(dbutils) -> str:
+    """Resolve the workspace-specific URL (not the regional apiUrl shard).
+
+    ctx.apiUrl() often returns a regional host like nvirginia.cloud.databricks.com
+    instead of the workspace host (dbc-....cloud.databricks.com), which breaks
+    AI Gateway with 404. Prefer spark conf and browserHostName when available.
+    """
+    import os
+
+    override = os.environ.get("DATABRICKS_HOST") or os.environ.get("DATABRICKS_WORKSPACE_URL")
+    if override:
+        return _normalize_workspace_url(override)
+
+    try:
+        from pyspark.sql import SparkSession
+
+        spark_url = SparkSession.builder.getOrCreate().conf.get(
+            "spark.databricks.workspaceUrl",
+            None,
+        )
+        if spark_url:
+            return _normalize_workspace_url(spark_url)
+    except Exception:
+        pass
+
+    ctx = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
+    try:
+        browser_host = ctx.browserHostName().get()
+        if browser_host:
+            return _normalize_workspace_url(browser_host)
+    except Exception:
+        pass
+
+    return _normalize_workspace_url(ctx.apiUrl().get())
+
+
+_dbutils = _get_dbutils()
+ctx = _dbutils.notebook.entry_point.getDbutils().notebook().getContext()
+workspace_url = _get_workspace_url(_dbutils)
 token = ctx.apiToken().get()
 gateway_base_url = f"{workspace_url}/ai-gateway/mlflow/v1"
 
